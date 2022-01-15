@@ -4,10 +4,6 @@ import requests
 import time
 import argparse
 
-from pprint import pprint
-
-from requests.auth import AuthBase
-
 from kafka import KafkaProducer
 
 # -----------------------------------------------------------------------------
@@ -15,7 +11,6 @@ from kafka import KafkaProducer
 # -----------------------------------------------------------------------------
 
 
-TWITTER_BEARER_TOKEN = "AAAAAAAAAAAAAAAAAAAAAKKtKAEAAAAACPg3PMOGtQVHNsildlpePBgOerQ%3DesDS5Ct5V5sVMpltauv7jl33XDPTOrd375Z3ki0fFKA0n698q1"
 STREAM_URL: str = "https://api.twitter.com/2/tweets/search/stream"
 RULES_URL: str = "https://api.twitter.com/2/tweets/search/stream/rules"
 
@@ -30,14 +25,17 @@ SAMPLE_RULES: t.List[t.Dict[str, str]] = [
 
 
 # -----------------------------------------------------------------------------
-#   From Twitter, utility methods
+#   Utility methods; pretty much copied from https://bit.ly/3GBnHaU
 # -----------------------------------------------------------------------------
 
 
-def bearer_oauth(r: t.Any) -> t.Any:
-    r.headers["Authorization"] = f"Bearer {TWITTER_BEARER_TOKEN}"
-    r.headers["User-Agent"] = "v2FilteredStreamPython"
-    return r
+def get_bearer_oauth_from_token(bearer_token: str) -> t.Callable:
+    def bearer_oauth(r: t.Any) -> t.Any:
+        r.headers["Authorization"] = f"Bearer {bearer_token}"
+        r.headers["User-Agent"] = "v2FilteredStreamPython"
+        return r
+
+    return bearer_oauth
 
 
 def get_all_rules(auth: t.Any) -> t.Any:
@@ -96,17 +94,10 @@ def get_cli_args():
     parser = argparse.ArgumentParser(description="Process some integers.")
 
     parser.add_argument(
-        "--consumer-key",
-        dest="consumer_key",
+        "--bearer-token",
+        dest="bearer_token",
         default=None,
-        help="The consumer key for the Twitter streaming API",
-    )
-
-    parser.add_argument(
-        "--consumer-secret",
-        dest="consumer_secret",
-        default=None,
-        help="The consumer secret for the Twitter streaming API",
+        help="The bearer token for the Twitter streaming API",
     )
 
     parser.add_argument(
@@ -122,11 +113,12 @@ def get_cli_args():
 def main():
     args = get_cli_args()
 
-    kafka_producer = KafkaProducer(bootstrap_servers="localhost:9092")
-
+    bearer_oauth_callable = get_bearer_oauth_from_token(args.bearer_token)
     setup_rules(
-        bearer_oauth
+        bearer_oauth_callable
     )  # NOTE: Comment this line if you already setup rules and want to keep them
+
+    kafka_producer = KafkaProducer(bootstrap_servers="localhost:9092")
 
     # NOTE: Listen to the stream. This reconnection logic will attempt to
     # reconnect when a disconnection is detected. To avoid rate limits,
@@ -134,7 +126,7 @@ def main():
     # increase if the client cannot reconnect to the stream.
     timeout = 0
     while True:
-        stream_connect(bearer_oauth, kafka_producer, args.topic)
+        stream_connect(bearer_oauth_callable, kafka_producer, args.topic)
         time.sleep(2 ** timeout)
         timeout += 1
 
