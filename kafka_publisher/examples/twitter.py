@@ -1,8 +1,8 @@
 import typing as t
 
+import argparse
 import requests
 import time
-import argparse
 
 from kafka import KafkaProducer
 
@@ -90,7 +90,7 @@ def setup_rules(auth: t.Any) -> None:
 # -----------------------------------------------------------------------------
 
 
-def get_cli_args():
+def get_cli_args() -> t.Any:
     parser = argparse.ArgumentParser(description="Process some integers.")
 
     parser.add_argument(
@@ -98,6 +98,13 @@ def get_cli_args():
         dest="bearer_token",
         default=None,
         help="The bearer token for the Twitter streaming API",
+    )
+
+    parser.add_argument(
+        "--bootstrap-server",
+        dest="bootstrap_server",
+        default="localhost:9092",
+        help="The bootstrap server",
     )
 
     parser.add_argument(
@@ -110,7 +117,7 @@ def get_cli_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> None:
     args = get_cli_args()
 
     bearer_oauth_callable = get_bearer_oauth_from_token(args.bearer_token)
@@ -118,7 +125,7 @@ def main():
         bearer_oauth_callable
     )  # NOTE: Comment this line if you already setup rules and want to keep them
 
-    kafka_producer = KafkaProducer(bootstrap_servers="localhost:9092")
+    kafka_producer = KafkaProducer(bootstrap_servers=args.bootstrap_server)
 
     # NOTE: Listen to the stream. This reconnection logic will attempt to
     # reconnect when a disconnection is detected. To avoid rate limits,

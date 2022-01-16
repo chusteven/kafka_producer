@@ -1,7 +1,9 @@
-import json
-from decimal import Decimal
+import typing as t
 
 import datetime
+import json
+
+from decimal import Decimal
 
 
 class KafkaDefaultEncoder(json.JSONEncoder):
@@ -13,7 +15,8 @@ class KafkaDefaultEncoder(json.JSONEncoder):
     All others are performed by the default `json.JSONEncoder.default`
     method
     """
-    def default(self, obj):
+
+    def default(self, obj: t.Any) -> t.Any:
         if isinstance(obj, Decimal):
             return float(obj)
         if isinstance(obj, (datetime.datetime, datetime.date)):
