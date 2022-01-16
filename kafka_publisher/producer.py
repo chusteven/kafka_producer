@@ -1,32 +1,36 @@
-import json
-import time
-from datetime import datetime
+"""
+This module should contain general use method for producing
+data to Kafka.
 
-from kafka import KafkaProducer
-
-from utils.serializers import KafkaDefaultEncoder
-
-
-HOST: str = "localhost"
-PORT: int = 9092
-TOPIC: str = "some_dummy_topic"
+Currently we anticipate these will be standalone library methods;
+but we could use them as route handlers in a web application.
+"""
+import typing as t
+from enum import Enum
 
 
-def main() -> None:
-    kafka_producer = KafkaProducer(bootstrap_servers=f"{HOST}:{PORT}")
-    while True:
-        kafka_producer.send(
-            TOPIC,
-            json.dumps(
-                {
-                    "time": datetime.now(),
-                    "message": "some random string",
-                },
-                cls=KafkaDefaultEncoder,
-            ).encode("utf-8"),
-        )
-        time.sleep(1)
+# -----------------------------------------------------------------------------
+#   Types
+# -----------------------------------------------------------------------------
 
 
-if __name__ == "__main__":
-    main()
+class KafkaPolicy(Enum):
+    FIRE_AND_FORGET = 1
+    PARTIAL_QUORUM = 2
+    FULL_QUORUM = 3
+
+
+class Result(Enum):
+    OK = 1
+    ERROR = 2
+
+
+# -----------------------------------------------------------------------------
+#   Core utils
+# -----------------------------------------------------------------------------
+
+
+def publish_datum_to_kafka(
+    datum: t.Any, policy: KafkaPolicy, topic: str, host: t.Optional[str]
+) -> Result:
+    pass
