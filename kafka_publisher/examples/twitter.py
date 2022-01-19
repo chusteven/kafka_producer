@@ -30,7 +30,7 @@ SAMPLE_RULES: t.List[t.Dict[str, str]] = [
 ]
 
 RATE_LIMITER_RECORDS_PER_MINUTE: int = 1_000
-TOKEN_BUCKET_LOCK: threading.Lock = threading.Lock()
+TOKEN_BUCKET_LOCK: threading.Condition = threading.Condition()
 SLEEP_TIME_IN_SECONDS: int = 60
 
 
@@ -87,19 +87,6 @@ def set_rules(rules: t.Any, auth: t.Any) -> None:
         )
 
 
-def stream_connect(
-    auth: t.Any, kafka_producer: t.Any, topic: str, token_bucket: TokenBucket
-) -> None:
-    response = requests.get(STREAM_URL, auth=auth, stream=True)
-    for response_line in response.iter_lines():
-        if response_line:
-            with TOKEN_BUCKET_LOCK:
-                if not token_bucket.num_tokens:
-                    continue
-                token_bucket.num_tokens -= 1
-                kafka_producer.send(topic, response_line)
-
-
 def setup_rules(auth: t.Any) -> None:
     current_rules = get_all_rules(auth)
     delete_all_rules(current_rules, auth)
@@ -146,8 +133,11 @@ def get_cli_args() -> t.Any:
 def refill_token_bucket(token_bucket: TokenBucket) -> None:
     while True:
         with TOKEN_BUCKET_LOCK:
-            if token_bucket.num_tokens < RATE_LIMITER_RECORDS_PER_MINUTE:
-                token_bucket.num_tokens = RATE_LIMITER_RECORDS_PER_MINUTE
+            logging.info(
+                f"Refilling tokens in bucket; previously {token_bucket.num_tokens}"
+            )
+            token_bucket.num_tokens = RATE_LIMITER_RECORDS_PER_MINUTE
+            TOKEN_BUCKET_LOCK.notify()
         time.sleep(SLEEP_TIME_IN_SECONDS)
 
 
@@ -164,6 +154,20 @@ def start_rate_limiter_daemon(token_bucket: TokenBucket) -> None:
 # -----------------------------------------------------------------------------
 #   Producer daemon
 # -----------------------------------------------------------------------------
+
+
+def stream_connect(
+    auth: t.Any, kafka_producer: t.Any, topic: str, token_bucket: TokenBucket
+) -> None:
+    response = requests.get(STREAM_URL, auth=auth, stream=True)
+    for response_line in response.iter_lines():
+        if response_line:
+            with TOKEN_BUCKET_LOCK:
+                if not token_bucket.num_tokens:
+                    logging.info("Not enough tokens in the bucket, waiting...")
+                    TOKEN_BUCKET_LOCK.wait()
+                token_bucket.num_tokens -= 1
+                kafka_producer.send(topic, response_line)
 
 
 def start_producer(token_bucket: TokenBucket) -> None:
