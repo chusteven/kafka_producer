@@ -142,7 +142,7 @@ def refill_token_bucket(token_bucket: TokenBucket) -> None:
 
 
 def start_rate_limiter_daemon(token_bucket: TokenBucket) -> None:
-    logging.info("Starting uploader daemon")
+    logging.info("Starting rate limiter daemon")
     t = threading.Thread(
         target=refill_token_bucket,
         args=(token_bucket,),
