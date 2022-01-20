@@ -34,9 +34,6 @@ TWEET_FIELDS: str = ",".join(
 )
 USER_FIELDS: str = ",".join(
     [
-        "id",
-        "name",
-        "username",
         "created_at",
         "description",
         "entities",
@@ -50,7 +47,11 @@ USER_FIELDS: str = ",".join(
         "withheld",
     ]
 )
-STREAM_URL: str = f"https://api.twitter.com/2/tweets/search/stream?tweet.fields={TWEET_FIELDS}&user.fields={USER_FIELDS}"
+STREAM_URL: str = (
+    "https://api.twitter.com/2/tweets/search/stream"
+    f"?tweet.fields={TWEET_FIELDS}&expansions=author_id"
+    f"&user.fields={USER_FIELDS}"
+)
 RULES_URL: str = "https://api.twitter.com/2/tweets/search/stream/rules"
 
 # See documentation for what is allowed:
