@@ -17,7 +17,40 @@ from kafka import KafkaProducer
 
 logging.basicConfig(level=logging.INFO)
 
-STREAM_URL: str = "https://api.twitter.com/2/tweets/search/stream"
+TWEET_FIELDS: str = ",".join(
+    [
+        "author_id",
+        "context_annotations",
+        "conversation_id",
+        "created_at",
+        "entities",
+        "geo",
+        "lang",
+        "possibly_sensitive",
+        "public_metrics",
+        "source",
+        "withheld",
+    ]
+)
+USER_FIELDS: str = ",".join(
+    [
+        "id",
+        "name",
+        "username",
+        "created_at",
+        "description",
+        "entities",
+        "location",
+        "pinned_tweet_id",
+        "profile_image_url",
+        "protected",
+        "public_metrics",
+        "url",
+        "verified",
+        "withheld",
+    ]
+)
+STREAM_URL: str = "https://api.twitter.com/2/tweets/search/stream?tweet.fields={TWEET_FIELDS}&user.fields={USER_FIELDS}"
 RULES_URL: str = "https://api.twitter.com/2/tweets/search/stream/rules"
 
 # See documentation for what is allowed:
