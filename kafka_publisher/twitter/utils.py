@@ -109,7 +109,7 @@ def setup_rules(auth: t.Any, rules: t.List[t.Dict[str, str]]) -> None:
     set_rules(rules, auth)
 
 
-def create_twitter_payload(message: t.Any) -> t.Optional[str]:
+def create_twitter_payload(message: t.Any) -> t.Optional[bytes]:
     message = json.loads(message)
     data = message.get("data", {})
     payload = None
@@ -122,4 +122,4 @@ def create_twitter_payload(message: t.Any) -> t.Optional[str]:
         payload = {**data, "user": users[0]}
     else:
         payload = {**data, "users": users}
-    return json.dumps(payload) if payload else None
+    return json.dumps(payload).encode("utf-8") if payload else None
