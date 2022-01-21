@@ -135,9 +135,9 @@ def stream_connect(
             ProtocolError,
             ChunkedEncodingError,
         ) as e:
-            logging.warn(
+            logging.warning(
                 f"Your queue got backed up AF [exception is {str(e)}], "
-                "re-establishing connection"
+                "re-establishing connection now..."
             )
             continue
 
