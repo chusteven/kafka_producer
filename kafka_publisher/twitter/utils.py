@@ -60,10 +60,14 @@ SAMPLE_STREAM_URL: str = (
 # -----------------------------------------------------------------------------
 
 
-def get_bearer_oauth_from_token(bearer_token: str) -> t.Callable:
+def get_bearer_oauth_from_token(bearer_token: str, application_type: str) -> t.Callable:
     def bearer_oauth(r: t.Any) -> t.Any:
         r.headers["Authorization"] = f"Bearer {bearer_token}"
-        r.headers["User-Agent"] = "v2FilteredStreamPython"
+        r.headers["User-Agent"] = (
+            "v2FilteredStreamPython"
+            if application_type == "filter_stream"
+            else "v2SampledStreamPython"
+        )
         return r
 
     return bearer_oauth
@@ -107,6 +111,11 @@ def setup_rules(auth: t.Any, rules: t.List[t.Dict[str, str]]) -> None:
     current_rules = get_all_rules(auth)
     delete_all_rules(current_rules, auth)
     set_rules(rules, auth)
+
+
+# -----------------------------------------------------------------------------
+#   More utility methods
+# -----------------------------------------------------------------------------
 
 
 def create_twitter_payload(message: t.Any) -> t.Optional[bytes]:

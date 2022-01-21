@@ -36,7 +36,7 @@ SAMPLE_RULES: t.List[t.Dict[str, str]] = [
 KILL_RATE_LIMITER_DAEMON = False
 RATE_LIMITER_RECORDS_PER_MINUTE: int = 1_000
 TOKEN_BUCKET_LOCK: threading.Condition = threading.Condition()
-SLEEP_TIME_IN_SECONDS: int = 60
+SLEEP_TIME_IN_SECONDS: int = 30
 
 
 # -----------------------------------------------------------------------------
@@ -131,7 +131,9 @@ def stream_connect(
 
 def start_producer(token_bucket: TokenBucket) -> None:
     args = get_cli_args()
-    bearer_oauth_callable = get_bearer_oauth_from_token(args.bearer_token)
+    bearer_oauth_callable = get_bearer_oauth_from_token(
+        args.bearer_token, "filter_stream"
+    )
     setup_rules(
         bearer_oauth_callable, SAMPLE_RULES
     )  # NOTE: Comment this line if you already setup rules and want to keep them
