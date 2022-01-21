@@ -8,12 +8,12 @@ import time
 
 from kafka import KafkaProducer
 
-from kafka_producer.twitter.utils import FILTER_STREAM_URL
-from kafka_producer.twitter.utils import create_twitter_payload
-from kafka_producer.twitter.utils import get_bearer_oauth_from_token
-from kafka_producer.twitter.utils import setup_rules
-from kafka_producer.utils.rate_limiting import TokenBucket
-from kafka_producer.utils.rate_limiting import RateLimiterKillswitch
+from twitter.utils import FILTER_STREAM_URL
+from twitter.utils import create_twitter_payload
+from twitter.utils import get_bearer_oauth_from_token
+from twitter.utils import setup_rules
+from utils.rate_limiting import TokenBucket
+from utils.rate_limiting import RateLimiterKillswitch
 
 
 # -----------------------------------------------------------------------------
