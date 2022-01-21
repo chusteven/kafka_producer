@@ -8,11 +8,12 @@ import time
 
 from kafka import KafkaProducer
 
-from twitter.utils import SAMPLE_STREAM_URL
-from twitter.utils import create_twitter_payload
-from twitter.utils import get_bearer_oauth_from_token
-from utils.rate_limiting import TokenBucket
-from utils.rate_limiting import RateLimiterKillswitch
+from kafka_publisher.twitter.utils import FILTER_STREAM_URL
+from kafka_publisher.twitter.utils import create_twitter_payload
+from kafka_publisher.twitter.utils import get_bearer_oauth_from_token
+from kafka_publisher.twitter.utils import setup_rules
+from kafka_publisher.utils.rate_limiting import TokenBucket
+from kafka_publisher.utils.rate_limiting import RateLimiterKillswitch
 
 
 # -----------------------------------------------------------------------------
@@ -22,6 +23,16 @@ from utils.rate_limiting import RateLimiterKillswitch
 
 logging.basicConfig(level=logging.INFO)
 
+# See documentation for what is allowed:
+# https://developer.twitter.com/en/docs/twitter-api/tweets/filtered-stream/integrate/build-a-rule#list
+SAMPLE_RULES: t.List[t.Dict[str, str]] = [
+    {
+        "value": "feel lang:en sample:10",
+        "tag": "Sampled tweets about feelings, in English",
+    },
+]
+
+KILL_RATE_LIMITER_DAEMON = False
 RATE_LIMITER_RECORDS_PER_MINUTE: int = 1_000
 TOKEN_BUCKET_LOCK: threading.Condition = threading.Condition()
 SLEEP_TIME_IN_SECONDS: int = 60
@@ -34,7 +45,7 @@ SLEEP_TIME_IN_SECONDS: int = 60
 
 def get_cli_args() -> t.Any:
     parser = argparse.ArgumentParser(
-        description="Arguments for the Twitter sample stream script"
+        description="Arguments for the Twitter filter stream script"
     )
 
     parser.add_argument(
@@ -104,7 +115,7 @@ def start_rate_limiter_daemon(
 def stream_connect(
     auth: t.Any, kafka_producer: t.Any, topic: str, token_bucket: TokenBucket
 ) -> None:
-    response = requests.get(SAMPLE_STREAM_URL, auth=auth, stream=True)
+    response = requests.get(FILTER_STREAM_URL, auth=auth, stream=True)
     for response_line in response.iter_lines():
         if response_line:
             with TOKEN_BUCKET_LOCK:
@@ -120,6 +131,10 @@ def stream_connect(
 def start_producer(token_bucket: TokenBucket) -> None:
     args = get_cli_args()
     bearer_oauth_callable = get_bearer_oauth_from_token(args.bearer_token)
+    setup_rules(
+        bearer_oauth_callable, SAMPLE_RULES
+    )  # NOTE: Comment this line if you already setup rules and want to keep them
+
     kafka_producer = KafkaProducer(bootstrap_servers=args.bootstrap_server)
     timeout = 0
     while True:
