@@ -141,7 +141,7 @@ def main() -> None:
         start_producer(token_bucket)
     except Exception as e:
         logging.error(
-            f"Ran into some exception {e} during production; stopping "
+            f"Ran into some exception {str(e)} during production; stopping "
             "rate limiting daemon"
         )
         try:
@@ -149,7 +149,7 @@ def main() -> None:
             thread.join()
         except Exception as te:
             logging.error(
-                f"Ran into some exception {te} while joining to rate "
+                f"Ran into some exception {str(te)} while joining to rate "
                 "limiting daemon thread; oh wells"
             )
             pass
