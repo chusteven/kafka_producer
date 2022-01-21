@@ -5,6 +5,7 @@ import logging
 import requests
 import threading
 import time
+import traceback
 
 from kafka import KafkaProducer
 
@@ -156,15 +157,15 @@ def main() -> None:
         start_producer(token_bucket)
     except Exception as e:
         logging.error(
-            f"Ran into some exception {e} during production; stopping "
-            "rate limiting daemon"
+            f"Ran into some exception {str(e)} with traceback {traceback.format_exc()} "
+            "during production; stopping rate limiting daemon"
         )
         try:
             rate_limiter_killswitch.should_kill = True
             thread.join()
         except Exception as te:
             logging.error(
-                f"Ran into some exception {te} while joining to rate "
+                f"Ran into some exception {str(te)} while joining to rate "
                 "limiting daemon thread; oh wells"
             )
             pass
