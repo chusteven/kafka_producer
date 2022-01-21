@@ -9,6 +9,10 @@ import traceback
 
 from kafka import KafkaProducer
 
+from requests.exceptions import ChunkedEncodingError
+from http.client import IncompleteRead
+from urllib3.exceptions import ProtocolError
+
 from kafka_publisher.twitter.utils import FILTER_STREAM_URL
 from kafka_publisher.twitter.utils import create_twitter_payload
 from kafka_publisher.twitter.utils import get_bearer_oauth_from_token
@@ -36,7 +40,7 @@ SAMPLE_RULES: t.List[t.Dict[str, str]] = [
 KILL_RATE_LIMITER_DAEMON = False
 RATE_LIMITER_RECORDS_PER_MINUTE: int = 1_000
 TOKEN_BUCKET_LOCK: threading.Condition = threading.Condition()
-SLEEP_TIME_IN_SECONDS: int = 30
+SLEEP_TIME_IN_SECONDS: int = 60
 
 
 # -----------------------------------------------------------------------------
@@ -116,17 +120,30 @@ def start_rate_limiter_daemon(
 def stream_connect(
     auth: t.Any, kafka_producer: t.Any, topic: str, token_bucket: TokenBucket
 ) -> None:
-    response = requests.get(FILTER_STREAM_URL, auth=auth, stream=True)
-    for response_line in response.iter_lines():
-        if response_line:
-            with TOKEN_BUCKET_LOCK:
-                if not token_bucket.num_tokens:
-                    logging.info("Not enough tokens in the bucket, waiting...")
-                    TOKEN_BUCKET_LOCK.wait()
-                token_bucket.num_tokens -= 1
-                payload = create_twitter_payload(response_line)
-                if payload:
-                    kafka_producer.send(topic, payload)
+    while True:
+        try:
+            with requests.get(FILTER_STREAM_URL, auth=auth, stream=True) as response:
+                for response_line in response.iter_lines():
+                    if not response_line:
+                        continue
+                    with TOKEN_BUCKET_LOCK:
+                        if not token_bucket.num_tokens:
+                            logging.info("Not enough tokens in the bucket, waiting...")
+                            TOKEN_BUCKET_LOCK.wait()
+                        token_bucket.num_tokens -= 1
+                        payload = create_twitter_payload(response_line)
+                        if payload:
+                            kafka_producer.send(topic, payload)
+        except (
+            IncompleteRead,
+            ProtocolError,
+            ChunkedEncodingError,
+        ) as e:
+            logging.warn(
+                f"Your queue got backed up AF [exception is {str(e)}], "
+                "re-establishing connection"
+            )
+            continue
 
 
 def start_producer(token_bucket: TokenBucket) -> None:

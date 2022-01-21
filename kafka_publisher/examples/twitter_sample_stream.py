@@ -128,9 +128,8 @@ def stream_connect(
                             TOKEN_BUCKET_LOCK.wait()
                         token_bucket.num_tokens -= 1
                         payload = create_twitter_payload(response_line)
-                        if not payload:
-                            continue
-                        kafka_producer.send(topic, payload)
+                        if payload:
+                            kafka_producer.send(topic, payload)
         except (  # lol which one is it that I should catch :P ??
             IncompleteRead,
             ProtocolError,
