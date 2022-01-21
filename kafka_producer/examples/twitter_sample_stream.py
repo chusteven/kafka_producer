@@ -6,20 +6,21 @@ import requests
 import threading
 import time
 
-from dataclasses import dataclass
-
 from kafka import KafkaProducer
 
 from kafka_producer.twitter.utils import SAMPLE_STREAM_URL
 from kafka_producer.twitter.utils import create_twitter_payload
 from kafka_producer.twitter.utils import get_bearer_oauth_from_token
 from kafka_producer.utils.rate_limiting import TokenBucket
+from kafka_producer.utils.rate_limiting import RateLimiterKillswitch
 
 
 # -----------------------------------------------------------------------------
 #   Constants
 # -----------------------------------------------------------------------------
 
+
+logging.basicConfig(level=logging.INFO)
 
 RATE_LIMITER_RECORDS_PER_MINUTE: int = 1_000
 TOKEN_BUCKET_LOCK: threading.Condition = threading.Condition()
@@ -65,8 +66,12 @@ def get_cli_args() -> t.Any:
 # -----------------------------------------------------------------------------
 
 
-def refill_token_bucket(token_bucket: TokenBucket) -> None:
+def refill_token_bucket(
+    token_bucket: TokenBucket, rate_limiter_killswitch: RateLimiterKillswitch
+) -> None:
     while True:
+        if rate_limiter_killswitch.should_kill:
+            break
         with TOKEN_BUCKET_LOCK:
             logging.info(
                 f"Refilling tokens in bucket; previously {token_bucket.num_tokens}"
@@ -76,14 +81,19 @@ def refill_token_bucket(token_bucket: TokenBucket) -> None:
         time.sleep(SLEEP_TIME_IN_SECONDS)
 
 
-def start_rate_limiter_daemon(token_bucket: TokenBucket) -> None:
+def start_rate_limiter_daemon(
+    token_bucket: TokenBucket, rate_limiter_killswitch: RateLimiterKillswitch
+) -> None:
     logging.info("Starting rate limiter daemon")
     t = threading.Thread(
         target=refill_token_bucket,
-        args=(token_bucket,),
+        args=(
+            token_bucket,
+            rate_limiter_killswitch,
+        ),
     )
     t.start()
-    return t  # though we don't actually do anything with it atm
+    return t
 
 
 # -----------------------------------------------------------------------------
@@ -125,8 +135,24 @@ def start_producer(token_bucket: TokenBucket) -> None:
 
 def main() -> None:
     token_bucket = TokenBucket(RATE_LIMITER_RECORDS_PER_MINUTE)
-    start_rate_limiter_daemon(token_bucket)
-    start_producer(token_bucket)
+    rate_limiter_killswitch = RateLimiterKillswitch(False)
+    thread = start_rate_limiter_daemon(token_bucket, rate_limiter_killswitch)
+    try:
+        start_producer(token_bucket)
+    except Exception as e:
+        logging.error(
+            f"Ran into some exception {e} during production; stopping "
+            "rate limiting daemon"
+        )
+        try:
+            rate_limiter_killswitch.should_kill = True
+            thread.join()
+        except Exception as te:
+            logging.error(
+                f"Ran into some exception {te} while joining to rate "
+                "limiting daemon thread; oh wells"
+            )
+            pass
 
 
 if __name__ == "__main__":
