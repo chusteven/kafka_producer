@@ -174,7 +174,7 @@ def main() -> None:
     thread = start_rate_limiter_daemon(token_bucket, rate_limiter_killswitch)
     try:
         start_producer(token_bucket)
-    except Exception as e:
+    except (Exception, KeyboardInterrupt) as e:
         logging.error(
             f"Ran into some exception {str(e)} with traceback {traceback.format_exc()} "
             "during production; stopping rate limiting daemon"
