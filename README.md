@@ -7,7 +7,9 @@ To test ensure that you have a local version of Kafka installed. I followed [the
 ```
 $ bin/zookeeper-server-start.sh config/zookeeper.properties
 $ bin/kafka-server-start.sh config/server.properties
-$ bin/kafka-topics.sh --create --partitions 1 --replication-factor 1 --topic <YOUR TOPIC> --bootstrap-server localhost:9092 --config 'retention.ms=172800000'
+$ bin/kafka-topics.sh --create --partitions 1 --replication-factor 1 \
+  --topic <YOUR TOPIC> --bootstrap-server localhost:9092 \
+  --config 'retention.ms=172800000'
 ```
 
 # Development
