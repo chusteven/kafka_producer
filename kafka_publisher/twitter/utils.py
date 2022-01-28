@@ -122,8 +122,6 @@ def create_twitter_payload(message: t.Any) -> t.Optional[bytes]:
     message = json.loads(message)
     data = message.get("data", {})
     payload = None
-    if not data:
-        payload = None
     users = message.get("includes", {}).get("users", [])
     if not users:
         payload = data
