@@ -1,3 +1,9 @@
+"""
+Ensure we free the pagecache periodically -- can schedule it in cron
+as follows:
+
+0 * * * * /home/pi/pg/raspberry_pi_scripts/scripts/clearcache.sh >> /home/pi/pg/logs/capture-log.txt 2>&1
+"""
 import typing as t
 
 import argparse
