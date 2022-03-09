@@ -7,6 +7,7 @@ as follows:
 import typing as t
 
 import argparse
+import json
 import logging
 import requests
 import threading
@@ -133,7 +134,13 @@ def stream_connect(
                             logging.info("Not enough tokens in the bucket, waiting...")
                             TOKEN_BUCKET_LOCK.wait()
                         token_bucket.num_tokens -= 1
-                        payload = create_twitter_payload(response_line)
+                        try:
+                            payload = create_twitter_payload(response_line)
+                        except json.decoder.JSONDecodeError as e:
+                            logging.error(
+                                f"Some exception [{str(e)}] when trying to parse response_line: {response_line}"
+                            )
+                            continue
                         if payload:
                             kafka_producer.send(topic, payload)
         except (  # lol which one is it that I should catch :P ??

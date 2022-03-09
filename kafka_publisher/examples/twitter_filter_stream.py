@@ -135,7 +135,7 @@ def stream_connect(
                         token_bucket.num_tokens -= 1
                         try:
                             payload = create_twitter_payload(response_line)
-                        except Exception as e:
+                        except json.decoder.JSONDecodeError as e:
                             logging.error(
                                 f"Some exception [{str(e)}] when trying to parse response_line: {response_line}"
                             )
